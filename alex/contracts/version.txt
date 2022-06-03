@@ -1,1 +1,25 @@
+Custom version with additional debugging output
+
+```
+        ExecuteMsg::IncreaseAllowance {
+            spender,
+            amount,
+            expires,
+        } => {
+            let xapi = deps.api;
+            xapi.debug("increase allowance called we go 🚀");
+
+            verify_sender_on_whitelist(deps.as_ref(), &info.sender)?;
+            xapi.debug("cw20_base::allowances increase allowance called we go 🚀");
+
+            let x = cw20_base::allowances::execute_increase_allowance(
+                deps, env, info, spender, amount, expires,
+            )?;
+            // deps.api.debug("after cw20_base::allowances increase allowance called we go 🚀");
+            let output = format!("response: {:?}", x.clone());
+            xapi.debug(&*output);
+            return Ok(x.clone());
+        }
+
+```
 TFI_TAG=v0.3.2

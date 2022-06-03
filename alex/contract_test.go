@@ -2,6 +2,8 @@ package alex
 
 import (
 	_ "embed"
+	"encoding/json"
+	"fmt"
 	wasmvm "github.com/CosmWasm/wasmvm"
 	"github.com/CosmWasm/wasmvm/api"
 	"github.com/CosmWasm/wasmvm/types"
@@ -66,7 +68,10 @@ func TestTrustedTokenExecute(t *testing.T) {
 		},
 	}
 	querier := MyQuerier(myContractAddr, types.Coins{}, func(r types.QueryRequest, limit uint64) ([]byte, error) {
-		return []byte(`{"members":[]}`), nil
+		if r.Wasm.Smart != nil {
+			return []byte(`{"members":[]}`), nil
+		}
+		return []byte(`1`), nil
 	})
 	deserCost := types.UFraction{Numerator: 140_000_000, Denominator: 1}
 	_, _, err = wasmer.Instantiate(checksum, env, info, initBz, kvStore, goApi, querier, gasMeter, infinteGas, deserCost)
@@ -76,10 +81,12 @@ func TestTrustedTokenExecute(t *testing.T) {
 {
             "increase_allowance": {
               "spender": "tgrade1kydlyzdwqkyxw360hu95320p62tu98mz04sk2p33as0j9pa20d6qgvpypv",
-              "amount": "340282366920938463463374607431768211454"
+              "amount": "340282366920938463463374607431768211454",
+				"expires": null
             }
 }
 `)
+	fmt.Printf("------------------------\n")
 	_, _, err = wasmer.Execute(checksum, env, info, execBz, kvStore, goApi, querier, gasMeter, infinteGas, deserCost)
 	require.NoError(t, err)
 }
@@ -96,10 +103,12 @@ func MyQuerier(contractAddr string, coins types.Coins, wasmHandler func(request 
 }
 
 func (m myQuerier) Query(request types.QueryRequest, gasLimit uint64) ([]byte, error) {
-	if request.Wasm == nil {
-		return m.other.Query(request, gasLimit)
+	bz, _ := json.Marshal(request)
+	fmt.Printf("%s\n", string(bz))
+	if request.Wasm != nil {
+		return m.wasmHandler(request, gasLimit)
 	}
-	return m.wasmHandler(request, gasLimit)
+	return m.other.Query(request, gasLimit)
 }
 
 func (m myQuerier) GasConsumed() uint64 {
